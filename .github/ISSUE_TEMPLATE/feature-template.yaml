@@ -1,0 +1,47 @@
+name: "🚀 기능 제안 (Feature Request)"
+description: "새로운 기능을 제안하거나 개선 아이디어를 공유합니다."
+title: "[Feature]: "
+labels: ["enhancement"]
+
+body:
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: "📝 기능 설명"
+      description: "어떤 기능이 추가되기를 원하는지 상세히 설명해 주세요."
+      placeholder: "예: 다양한 채팅 플랫폼과 연결할 수 있는 어댑터 구조 도입"
+    validations:
+      required: true
+
+  - type: textarea
+    id: necessity
+    attributes:
+      label: "💡 필요성"
+      description: "왜 이 기능이 필요한가요? 해결하려는 문제나 사용자 시나리오를 설명해 주세요."
+      placeholder: "예: 하나의 플랫폼에 한정되지 않고 시스템 확장성을 높이기 위함"
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation-plan
+    attributes:
+      label: "🏗️ 구현 방안"
+      description: "생각하고 계신 기술적인 해결 방법이나 아키텍처 제안이 있다면 적어주세요."
+      placeholder: "예: 인터페이스 구조와 전략 패턴을 통한 프로젝트 구조 개선"
+
+  - type: textarea
+    id: task-details
+    attributes:
+      label: "✅ 작업 상세 내용"
+      description: "작업이 완료되기 위해 필요한 하위 태스크들을 나열해 주세요."
+      placeholder: |
+        - [ ] 인터페이스 도출
+        - [ ] 구체적인 전략 클래스 설정
+    validations:
+      required: true
+
+  - type: textarea
+    id: references
+    attributes:
+      label: "🔗 참고 자료"
+      description: "스크린샷, 관련 문서 링크, 디자인 시안 등 참고할 만한 자료를 추가해 주세요."
