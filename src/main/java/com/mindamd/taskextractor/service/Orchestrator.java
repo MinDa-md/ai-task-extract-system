@@ -32,14 +32,10 @@ public class Orchestrator {
         PhaseData current = initial;
         for (Phase phase : phases) {
             String stepId = phase.getClass().getSimpleName();
-
-            execution.updateStep(stepId, PipelineStatus.RUNNING);
+            execution.updateStep(stepId);
             repository.save(execution);
 
             current = phase.execute(current);
-
-            execution.updateStep(stepId, PipelineStatus.SUCCESS);
-            repository.save(execution);
         }
 
         execution.updatePipelineStatus(PipelineStatus.SUCCESS);

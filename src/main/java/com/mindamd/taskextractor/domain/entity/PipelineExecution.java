@@ -30,10 +30,6 @@ public class PipelineExecution {
     private String stepId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "step_status")
-    private PipelineStatus stepStatus;
-
-    @Enumerated(EnumType.STRING)
     @Column(name = "pipeline_status")
     private PipelineStatus pipelineStatus;
 
@@ -43,9 +39,8 @@ public class PipelineExecution {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
-    public void updateStep(String stepId, PipelineStatus stepStatus) {
+    public void updateStep(String stepId) {
         this.stepId = stepId;
-        this.stepStatus = stepStatus;
     }
 
     public void complete(LocalDateTime completedAt) {

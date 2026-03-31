@@ -67,8 +67,8 @@ class OrchestratorPersistenceTest {
     }
 
     @Test
-    // 마지막 Phase의 step_id·step_status가 DB에 저장된다
-    void runUpdatesStepIdAndStatusPerPhase() {
+    // 마지막 Phase의 step_id가 DB에 저장된다
+    void runUpdatesStepIdPerPhase() {
         // when
         orchestrator.run("req-persist-2", new TestPhaseData());
         entityManager.flush();
@@ -78,6 +78,5 @@ class OrchestratorPersistenceTest {
         var result = repository.findById("req-persist-2");
         assertThat(result).isPresent();
         assertThat(result.get().getStepId()).isEqualTo("StubPhaseB");
-        assertThat(result.get().getStepStatus()).isEqualTo(PipelineStatus.SUCCESS);
     }
 }

@@ -76,7 +76,7 @@ class PipelineExecutionRepositoryTest {
         PipelineExecution saved = repository.save(buildExecution("req-004", PipelineStatus.RUNNING));
 
         // when
-        saved.updateStep("phase-1", PipelineStatus.RUNNING);
+        saved.updateStep("phase-1");
         repository.save(saved);
         entityManager.flush();
         entityManager.clear();
@@ -84,7 +84,6 @@ class PipelineExecutionRepositoryTest {
         // then
         PipelineExecution updated = repository.findById("req-004").get();
         assertThat(updated.getStepId()).isEqualTo("phase-1");
-        assertThat(updated.getStepStatus()).isEqualTo(PipelineStatus.RUNNING);
     }
 
     @Test
@@ -108,7 +107,6 @@ class PipelineExecutionRepositoryTest {
         return PipelineExecution.builder()
                 .reqId(reqId)
                 .stepId("phase-1")
-                .stepStatus(status)
                 .pipelineStatus(status)
                 .createdAt(LocalDateTime.now())
                 .build();
