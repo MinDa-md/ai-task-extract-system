@@ -43,6 +43,15 @@ public class PipelineExecution {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    public void updateStep(String stepId, PipelineStatus stepStatus) {
+        this.stepId = stepId;
+        this.stepStatus = stepStatus;
+    }
+
+    public void complete(LocalDateTime completedAt) {
+        this.completedAt = completedAt;
+    }
+
     public void updatePipelineStatus(PipelineStatus status) {
         this.pipelineStatus = status;
     }

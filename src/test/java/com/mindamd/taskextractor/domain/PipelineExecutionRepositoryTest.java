@@ -69,6 +69,41 @@ class PipelineExecutionRepositoryTest {
         assertThat(updated.getPipelineStatus()).isEqualTo(PipelineStatus.SUCCESS);
     }
 
+    @Test
+    // updateStep은 stepId와 stepStatus를 갱신한다
+    void updateStep() {
+        // given
+        PipelineExecution saved = repository.save(buildExecution("req-004", PipelineStatus.RUNNING));
+
+        // when
+        saved.updateStep("phase-1", PipelineStatus.RUNNING);
+        repository.save(saved);
+        entityManager.flush();
+        entityManager.clear();
+
+        // then
+        PipelineExecution updated = repository.findById("req-004").get();
+        assertThat(updated.getStepId()).isEqualTo("phase-1");
+        assertThat(updated.getStepStatus()).isEqualTo(PipelineStatus.RUNNING);
+    }
+
+    @Test
+    // complete는 completedAt을 설정한다
+    void complete() {
+        // given
+        PipelineExecution saved = repository.save(buildExecution("req-005", PipelineStatus.RUNNING));
+
+        // when
+        saved.complete(LocalDateTime.now());
+        repository.save(saved);
+        entityManager.flush();
+        entityManager.clear();
+
+        // then
+        PipelineExecution updated = repository.findById("req-005").get();
+        assertThat(updated.getCompletedAt()).isNotNull();
+    }
+
     private PipelineExecution buildExecution(String reqId, PipelineStatus status) {
         return PipelineExecution.builder()
                 .reqId(reqId)
