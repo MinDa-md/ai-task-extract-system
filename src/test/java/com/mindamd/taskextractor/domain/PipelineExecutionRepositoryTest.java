@@ -1,8 +1,9 @@
 package com.mindamd.taskextractor.domain;
 
 import com.mindamd.taskextractor.TestcontainersConfiguration;
-import com.mindamd.taskextractor.domain.entity.PipelineExecution;
-import com.mindamd.taskextractor.domain.repository.PipelineExecutionRepository;
+import com.mindamd.taskextractor.domain.entity.Pipeline;
+import com.mindamd.taskextractor.domain.repository.PipelineRepository;
+import com.mindamd.taskextractor.domain.PipelineStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -20,33 +21,38 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PipelineExecutionRepositoryTest {
 
     @Autowired
-    PipelineExecutionRepository repository;
+    PipelineRepository repository;
 
     @Autowired
     TestEntityManager entityManager;
 
     @Test
-    void savePipelineExecution() {
+    // Pipeline을 RUNNING 상태로 저장하면 id와 status가 DB에 반영된다
+    void savePipeline() {
         // given
-        PipelineExecution execution = buildExecution("req-001", PipelineStatus.RUNNING);
+        Pipeline pipeline = Pipeline.builder()
+                .id("pipe-001")
+                .pipelineStatus(PipelineStatus.RUNNING)
+                .build();
 
         // when
-        PipelineExecution saved = repository.save(execution);
+        Pipeline saved = repository.save(pipeline);
 
         // then
-        assertThat(saved.getReqId()).isEqualTo("req-001");
+        assertThat(saved.getId()).isEqualTo("pipe-001");
         assertThat(saved.getPipelineStatus()).isEqualTo(PipelineStatus.RUNNING);
     }
 
     @Test
-    void findByReqId() {
+    // 저장된 Pipeline을 id로 조회할 수 있다
+    void findById() {
         // given
-        repository.save(buildExecution("req-002", PipelineStatus.SUCCESS));
+        repository.save(Pipeline.builder().id("pipe-002").pipelineStatus(PipelineStatus.SUCCESS).build());
         entityManager.flush();
         entityManager.clear();
 
         // when
-        var found = repository.findById("req-002");
+        var found = repository.findById("pipe-002");
 
         // then
         assertThat(found).isPresent();
@@ -54,61 +60,38 @@ class PipelineExecutionRepositoryTest {
     }
 
     @Test
-    void updatePipelineStatus() {
+    // recordFailure는 pipelineStatus를 FAILED로 전이한다
+    void recordFailure() {
         // given
-        PipelineExecution saved = repository.save(buildExecution("req-003", PipelineStatus.RUNNING));
+        Pipeline saved = repository.save(Pipeline.builder().id("pipe-003").pipelineStatus(PipelineStatus.RUNNING).build());
 
         // when
-        saved.updatePipelineStatus(PipelineStatus.SUCCESS);
+        saved.recordFailure(PipelineStatus.FAILED);
         repository.save(saved);
         entityManager.flush();
         entityManager.clear();
 
         // then
-        PipelineExecution updated = repository.findById("req-003").get();
-        assertThat(updated.getPipelineStatus()).isEqualTo(PipelineStatus.SUCCESS);
+        Pipeline updated = repository.findById("pipe-003").get();
+        assertThat(updated.getPipelineStatus()).isEqualTo(PipelineStatus.FAILED);
     }
 
     @Test
-    // updateStep은 stepId와 stepStatus를 갱신한다
-    void updateStep() {
-        // given
-        PipelineExecution saved = repository.save(buildExecution("req-004", PipelineStatus.RUNNING));
-
-        // when
-        saved.updateStep("phase-1");
-        repository.save(saved);
-        entityManager.flush();
-        entityManager.clear();
-
-        // then
-        PipelineExecution updated = repository.findById("req-004").get();
-        assertThat(updated.getStepId()).isEqualTo("phase-1");
-    }
-
-    @Test
-    // complete는 completedAt을 설정한다
+    // complete는 completedAt, finalResult, status=SUCCESS를 저장한다
     void complete() {
         // given
-        PipelineExecution saved = repository.save(buildExecution("req-005", PipelineStatus.RUNNING));
+        Pipeline saved = repository.save(Pipeline.builder().id("pipe-004").pipelineStatus(PipelineStatus.RUNNING).build());
 
         // when
-        saved.complete(LocalDateTime.now());
+        saved.complete(LocalDateTime.now(), "{\"key\":\"value\"}");
         repository.save(saved);
         entityManager.flush();
         entityManager.clear();
 
         // then
-        PipelineExecution updated = repository.findById("req-005").get();
+        Pipeline updated = repository.findById("pipe-004").get();
+        assertThat(updated.getPipelineStatus()).isEqualTo(PipelineStatus.SUCCESS);
         assertThat(updated.getCompletedAt()).isNotNull();
-    }
-
-    private PipelineExecution buildExecution(String reqId, PipelineStatus status) {
-        return PipelineExecution.builder()
-                .reqId(reqId)
-                .stepId("phase-1")
-                .pipelineStatus(status)
-                .createdAt(LocalDateTime.now())
-                .build();
+        assertThat(updated.getFinalResult()).isEqualTo("{\"key\":\"value\"}");
     }
 }

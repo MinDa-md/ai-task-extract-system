@@ -2,7 +2,11 @@ package com.mindamd.taskextractor.domain;
 
 public interface Phase {
 
-    PhaseData execute(PhaseData input);
+    String getStepId();
 
-    PhaseData restore(String serializedData);
+    PhaseData execute(String pipelineId, PhaseData input);
+
+    String serialize(PhaseData result);
+
+    PhaseData deserialize(String json);
 }

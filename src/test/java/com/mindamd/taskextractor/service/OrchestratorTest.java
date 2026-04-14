@@ -3,25 +3,26 @@ package com.mindamd.taskextractor.service;
 import com.mindamd.taskextractor.domain.Phase;
 import com.mindamd.taskextractor.domain.PhaseData;
 import com.mindamd.taskextractor.domain.PipelineStatus;
-import com.mindamd.taskextractor.domain.repository.PipelineExecutionRepository;
+import com.mindamd.taskextractor.domain.entity.Pipeline;
+import com.mindamd.taskextractor.domain.repository.PipelineRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
-
-import com.mindamd.taskextractor.domain.entity.PipelineExecution;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class OrchestratorTest {
 
     Phase mockPhase1 = mock(Phase.class);
     Phase mockPhase2 = mock(Phase.class);
-    PipelineExecutionRepository mockRepo = mock(PipelineExecutionRepository.class);
+    PipelineRepository mockRepo = mock(PipelineRepository.class);
     Orchestrator orchestrator = new Orchestrator(List.of(mockPhase1, mockPhase2), mockRepo);
 
     List<PipelineStatus> savedPipelineStatuses = new ArrayList<>();
@@ -30,12 +31,16 @@ class OrchestratorTest {
 
     @BeforeEach
     void setUp() {
-        when(mockPhase1.execute(any())).thenAnswer(i -> i.getArguments()[0]);
-        when(mockPhase2.execute(any())).thenAnswer(i -> i.getArguments()[0]);
+        when(mockPhase1.getStepId()).thenReturn("phase1");
+        when(mockPhase2.getStepId()).thenReturn("phase2");
+        when(mockPhase1.execute(any(), any())).thenAnswer(i -> i.getArgument(1));
+        when(mockPhase2.execute(any(), any())).thenAnswer(i -> i.getArgument(1));
+        when(mockPhase2.serialize(any())).thenReturn("{}");
+        when(mockRepo.findById(any())).thenReturn(Optional.empty());
         when(mockRepo.save(any())).thenAnswer(i -> {
-            PipelineExecution e = i.getArgument(0);
-            savedPipelineStatuses.add(e.getPipelineStatus());
-            return e;
+            Pipeline p = i.getArgument(0);
+            savedPipelineStatuses.add(p.getPipelineStatus());
+            return p;
         });
     }
 
@@ -46,9 +51,9 @@ class OrchestratorTest {
         orchestrator.run("req-order", new TestPhaseData());
 
         // then
-        InOrder inOrder = inOrder(mockPhase1, mockPhase2);
-        inOrder.verify(mockPhase1).execute(any());
-        inOrder.verify(mockPhase2).execute(any());
+        var inOrder = inOrder(mockPhase1, mockPhase2);
+        inOrder.verify(mockPhase1).execute(any(), any());
+        inOrder.verify(mockPhase2).execute(any(), any());
     }
 
     @Test

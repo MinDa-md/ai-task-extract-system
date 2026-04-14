@@ -5,9 +5,8 @@ public enum PipelineStatus {
 
     public boolean canTransitionTo(PipelineStatus next) {
         return switch (this) {
-            case PENDING -> next == RUNNING;
+            case PENDING, FAILED -> next == RUNNING;
             case RUNNING -> next == SUCCESS || next == FAILED || next == FINAL_FAILED;
-            case FAILED -> next == RUNNING;
             case SUCCESS, FINAL_FAILED -> false;
         };
     }

@@ -4,7 +4,8 @@ import com.mindamd.taskextractor.TestcontainersConfiguration;
 import com.mindamd.taskextractor.domain.Phase;
 import com.mindamd.taskextractor.domain.PhaseData;
 import com.mindamd.taskextractor.domain.PipelineStatus;
-import com.mindamd.taskextractor.domain.repository.PipelineExecutionRepository;
+import com.mindamd.taskextractor.domain.entity.Pipeline;
+import com.mindamd.taskextractor.domain.repository.PipelineRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OrchestratorPersistenceTest {
 
     @Autowired
-    PipelineExecutionRepository repository;
+    PipelineRepository repository;
 
     @Autowired
     TestEntityManager entityManager;
@@ -33,17 +34,17 @@ class OrchestratorPersistenceTest {
     static class TestPhaseData implements PhaseData {}
 
     static class StubPhaseA implements Phase {
-        @Override
-        public PhaseData execute(PhaseData input) { return input; }
-        @Override
-        public PhaseData restore(String serializedData) { return null; }
+        @Override public String getStepId() { return "StubPhaseA"; }
+        @Override public PhaseData execute(String pipelineId, PhaseData input) { return input; }
+        @Override public String serialize(PhaseData result) { return "{}"; }
+        @Override public PhaseData deserialize(String json) { return new TestPhaseData(); }
     }
 
     static class StubPhaseB implements Phase {
-        @Override
-        public PhaseData execute(PhaseData input) { return input; }
-        @Override
-        public PhaseData restore(String serializedData) { return null; }
+        @Override public String getStepId() { return "StubPhaseB"; }
+        @Override public PhaseData execute(String pipelineId, PhaseData input) { return input; }
+        @Override public String serialize(PhaseData result) { return "{}"; }
+        @Override public PhaseData deserialize(String json) { return new TestPhaseData(); }
     }
 
     @BeforeEach
@@ -67,16 +68,15 @@ class OrchestratorPersistenceTest {
     }
 
     @Test
-    // 마지막 Phase의 step_id가 DB에 저장된다
-    void runUpdatesStepIdPerPhase() {
+    // run 완료 후 finalResult가 DB에 저장된다
+    void runSavesFinalResult() {
         // when
         orchestrator.run("req-persist-2", new TestPhaseData());
         entityManager.flush();
         entityManager.clear();
 
         // then
-        var result = repository.findById("req-persist-2");
-        assertThat(result).isPresent();
-        assertThat(result.get().getStepId()).isEqualTo("StubPhaseB");
+        Pipeline pipeline = repository.findById("req-persist-2").orElseThrow();
+        assertThat(pipeline.getFinalResult()).isNotNull();
     }
 }
