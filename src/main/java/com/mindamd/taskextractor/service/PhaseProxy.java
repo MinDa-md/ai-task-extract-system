@@ -8,6 +8,8 @@ import com.mindamd.taskextractor.domain.repository.PhaseExecutionRepository;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -15,6 +17,8 @@ import java.util.Optional;
 @Aspect
 @Component
 public class PhaseProxy {
+
+    private static final Logger log = LoggerFactory.getLogger(PhaseProxy.class);
 
     private final PhaseExecutionRepository phaseRepository;
 
@@ -30,18 +34,29 @@ public class PhaseProxy {
 
         Optional<PhaseExecution> cached = phaseRepository.findByPipelineIdAndStepId(pipelineId, stepId);
         if (cached.isPresent()) {
+            log.info("Phase [{}] skipped (cached). pipelineId={}", stepId, pipelineId);
             return phase.deserialize(cached.get().getResult());
         }
 
-        PhaseData result = (PhaseData) pjp.proceed();
+        log.info("Phase [{}] started. pipelineId={}", stepId, pipelineId);
+        long start = System.currentTimeMillis();
+        try {
+            PhaseData result = (PhaseData) pjp.proceed();
+            long elapsed = System.currentTimeMillis() - start;
+            log.info("Phase [{}] completed. pipelineId={}, elapsed={}ms", stepId, pipelineId, elapsed);
 
-        phaseRepository.save(PhaseExecution.builder()
-                .pipelineId(pipelineId)
-                .stepId(stepId)
-                .status(PipelineStatus.SUCCESS)
-                .result(phase.serialize(result))
-                .build());
+            phaseRepository.save(PhaseExecution.builder()
+                    .pipelineId(pipelineId)
+                    .stepId(stepId)
+                    .status(PipelineStatus.SUCCESS)
+                    .result(phase.serialize(result))
+                    .build());
 
-        return result;
+            return result;
+        } catch (Throwable t) {
+            long elapsed = System.currentTimeMillis() - start;
+            log.error("Phase [{}] failed. pipelineId={}, elapsed={}ms, error={}", stepId, pipelineId, elapsed, t.getMessage());
+            throw t;
+        }
     }
 }

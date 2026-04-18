@@ -7,6 +7,7 @@ import com.mindamd.taskextractor.domain.entity.Pipeline;
 import com.mindamd.taskextractor.domain.repository.PipelineRepository;
 import com.mindamd.taskextractor.global.exception.NonRecoverableException;
 import com.mindamd.taskextractor.global.exception.RecoverableException;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -25,21 +26,26 @@ public class Orchestrator {
     }
 
     public PhaseData run(String pipelineId, PhaseData initial) {
-        Optional<Pipeline> existing = repository.findById(pipelineId);
+        MDC.put("req_id", pipelineId);
+        try {
+            Optional<Pipeline> existing = repository.findById(pipelineId);
 
-        if (existing.isEmpty()) {
-            Pipeline pipeline = Pipeline.builder().id(pipelineId).build();
-            return executePhases(pipeline, initial);
+            if (existing.isEmpty()) {
+                Pipeline pipeline = Pipeline.builder().id(pipelineId).build();
+                return executePhases(pipeline, initial);
+            }
+
+            Pipeline pipeline = existing.get();
+            return switch (pipeline.getPipelineStatus()) {
+                case SUCCESS -> restoreLastResult(pipeline);
+                case RUNNING -> throw new IllegalStateException("Pipeline already running: " + pipelineId);
+                case FINAL_FAILED -> throw new NonRecoverableException("Pipeline permanently failed: " + pipelineId);
+                case FAILED -> executePhases(pipeline, initial);
+                case PENDING -> throw new IllegalStateException("Unexpected PENDING status: " + pipelineId);
+            };
+        } finally {
+            MDC.remove("req_id");
         }
-
-        Pipeline pipeline = existing.get();
-        return switch (pipeline.getPipelineStatus()) {
-            case SUCCESS -> restoreLastResult(pipeline);
-            case RUNNING -> throw new IllegalStateException("Pipeline already running: " + pipelineId);
-            case FINAL_FAILED -> throw new NonRecoverableException("Pipeline permanently failed: " + pipelineId);
-            case FAILED -> executePhases(pipeline, initial);
-            case PENDING -> throw new IllegalStateException("Unexpected PENDING status: " + pipelineId);
-        };
     }
 
     private PhaseData executePhases(Pipeline pipeline, PhaseData initial) {
