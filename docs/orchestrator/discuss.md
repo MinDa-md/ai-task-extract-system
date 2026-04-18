@@ -65,14 +65,36 @@
 
 ---
 
-## ADR-006: Phase 인터페이스에 restore()를 추가한다
+## ADR-007: 멱등성 로직을 @Aspect PhaseProxy로 주입한다
 
-**결정**: `PhaseData restore(String serializedData)`를 `Phase` 인터페이스에 추가한다. 재실행 시 Orchestrator는 DB에서 JSON을 읽어 해당 Phase의 `restore()`를 호출하고, Phase가 자신의 구체 타입으로 역직렬화한다.
+**결정**: Phase 실행 캐싱(멱등성)을 `@Aspect` `PhaseProxy`로 구현한다. `@Around("execution(* Phase.execute(..))")`로 모든 Phase 실행을 가로채, pipelineId+stepId 조합으로 캐시 히트 여부를 확인한 뒤 반환하거나 실행 후 저장한다.
 
 **이유**:
-- 직렬화/역직렬화는 구체 PhaseData 타입을 알아야 하므로, 그 지식을 가진 Phase가 담당하는 것이 자연스럽다
-- 별도의 복원 계층을 두면 그 계층이 도메인 구체 클래스에 의존하게 되어 역의존이 발생한다
-- DB 읽기(Orchestrator)와 역직렬화(Phase)를 분리하면서 구체 타입 지식은 Phase 안에 캡슐화된다
+- Orchestrator 루프와 Phase 구현체 어디에도 멱등성 코드가 없어 단일 책임이 유지된다
+- Phase를 추가할 때 캐싱 로직을 신경 쓸 필요가 없다 (OCP)
+- `@Order` 기반 Phase 빈 순서가 AOP 인터셉터와 독립적으로 유지된다
 
-**기각된 대안**: Phase가 직접 DB를 조회해 복원
+**기각된 대안**: Orchestrator 루프 내부에서 직접 캐시 확인
+- Orchestrator가 PhaseExecution 저장소에 직접 의존하게 되어 책임이 비대해진다
+- Phase가 추가될 때마다 Orchestrator 로직이 영향을 받는다
+
+---
+
+## ADR-006: Phase 인터페이스에 serialize()/deserialize()를 추가한다
+
+**결정**: `Phase` 인터페이스에 두 메서드를 추가한다.
+- `String serialize(PhaseData result)` — 출력을 JSON String으로 직렬화
+- `PhaseData deserialize(String json)` — JSON String을 구체 타입으로 역직렬화
+
+PhaseProxy는 phase 결과를 저장할 때 `phase.serialize()`를 호출하고, 캐시 히트 시 `phase.deserialize()`를 호출한다. Orchestrator의 `restoreLastResult`도 `phases.last().deserialize()`를 사용한다.
+
+**이유**:
+- PhaseData는 마커 인터페이스(ADR-002)이므로 PhaseProxy나 Orchestrator가 구체 타입을 알 수 없다. 역직렬화 시 타입 정보가 없으면 ObjectMapper가 타입을 추론할 수 없다
+- 직렬화도 같은 이유로 Phase에 위임하면 PhaseProxy에 ObjectMapper 의존성이 사라지고 관심사가 명확히 분리된다
+- DB 읽기/쓰기(PhaseProxy, Orchestrator)와 타입 변환(Phase)을 분리하면서 구체 타입 지식은 Phase 안에 캡슐화된다
+
+**기각된 대안 1**: PhaseProxy에 ObjectMapper 주입
+- 직렬화는 가능하나 역직렬화 시 구체 타입 정보 부재로 타입 파라미터를 외부에서 전달해야 한다
+
+**기각된 대안 2**: Phase가 직접 DB를 조회해 복원
 - 모든 Phase에 DB 의존성이 생기며, DB 읽기 책임이 Orchestrator와 Phase에 분산된다

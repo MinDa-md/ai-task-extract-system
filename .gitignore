@@ -36,3 +36,5 @@ out/
 ### VS Code ###
 .vscode/
 .serena
+
+docs/**/plan.md
