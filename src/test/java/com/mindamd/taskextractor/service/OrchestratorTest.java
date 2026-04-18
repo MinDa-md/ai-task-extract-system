@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -42,6 +43,13 @@ class OrchestratorTest {
             savedPipelineStatuses.add(p.getPipelineStatus());
             return p;
         });
+    }
+
+    @Test
+    // phases 빈 리스트로 생성 시 예외
+    void emptyPhases_throwsIllegalArgument() {
+        assertThatThrownBy(() -> new Orchestrator(List.of(), mockRepo))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

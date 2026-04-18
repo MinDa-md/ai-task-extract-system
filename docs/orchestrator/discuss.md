@@ -106,3 +106,18 @@ PhaseProxy는 phase 결과를 저장할 때 `phase.serialize()`를 호출하고,
 - `ObjectInputStream` 기반 Java 네이티브 역직렬화
 
 반드시 구체 타입으로만 역직렬화한다: `mapper.readValue(json, MyPhaseData.class)`
+
+---
+
+## ADR-001 보충: execute() 시그니처에 pipelineId 추가
+
+**결정**: `PhaseData execute(String pipelineId, PhaseData input)`
+
+**이유**:
+- Pipeline과 Phase가 별도 엔티티로 분리되어, Phase 실행 시 어느 Pipeline에 속하는지 명시적으로 전달 필요
+- PhaseProxy(ADR-007)가 `pipelineId + stepId` 조합으로 캐시를 조회하므로 인터셉터에서 pipelineId 접근이 필요
+- MDC는 로깅 전파 목적이며, 비즈니스 키를 MDC로 전달하는 것은 비동기 경계에서 안정성이 보장되지 않음
+
+**기각된 대안**: PhaseProxy가 `MDC.get("req_id")`로 pipelineId를 읽는 방식
+- MDC는 스레드 로컬 기반으로 비동기 경계에서 전파가 보장되지 않음
+- 로깅 인프라를 비즈니스 키 전달 경로로 사용하는 것은 안티패턴

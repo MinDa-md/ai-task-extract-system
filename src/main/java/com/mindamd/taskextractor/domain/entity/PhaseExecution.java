@@ -1,11 +1,8 @@
 package com.mindamd.taskextractor.domain.entity;
 
-import com.mindamd.taskextractor.domain.PipelineStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -37,10 +34,6 @@ public class PhaseExecution {
 
     @Column(name = "step_id")
     private String stepId;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status")
-    private PipelineStatus status;
 
     @Column(columnDefinition = "text")
     private String result;

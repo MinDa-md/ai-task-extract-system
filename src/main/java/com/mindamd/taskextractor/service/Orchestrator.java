@@ -21,6 +21,9 @@ public class Orchestrator {
     private final PipelineRepository repository;
 
     public Orchestrator(List<Phase> phases, PipelineRepository repository) {
+        if (phases.isEmpty()) {
+            throw new IllegalArgumentException("phases must not be empty");
+        }
         this.phases = phases;
         this.repository = repository;
     }
@@ -67,7 +70,7 @@ public class Orchestrator {
             throw e;
         }
 
-        String finalResult = phases.get(phases.size() - 1).serialize(current);
+        String finalResult = lastPhase().serialize(current);
         pipeline.complete(LocalDateTime.now(), finalResult);
         repository.save(pipeline);
 
@@ -75,6 +78,10 @@ public class Orchestrator {
     }
 
     private PhaseData restoreLastResult(Pipeline pipeline) {
-        return phases.get(phases.size() - 1).deserialize(pipeline.getFinalResult());
+        return lastPhase().deserialize(pipeline.getFinalResult());
+    }
+
+    private Phase lastPhase() {
+        return phases.get(phases.size() - 1);
     }
 }

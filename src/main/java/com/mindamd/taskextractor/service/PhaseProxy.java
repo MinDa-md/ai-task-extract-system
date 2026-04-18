@@ -2,7 +2,6 @@ package com.mindamd.taskextractor.service;
 
 import com.mindamd.taskextractor.domain.Phase;
 import com.mindamd.taskextractor.domain.PhaseData;
-import com.mindamd.taskextractor.domain.PipelineStatus;
 import com.mindamd.taskextractor.domain.entity.PhaseExecution;
 import com.mindamd.taskextractor.domain.repository.PhaseExecutionRepository;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -48,7 +47,6 @@ public class PhaseProxy {
             phaseRepository.save(PhaseExecution.builder()
                     .pipelineId(pipelineId)
                     .stepId(stepId)
-                    .status(PipelineStatus.SUCCESS)
                     .result(phase.serialize(result))
                     .build());
 
