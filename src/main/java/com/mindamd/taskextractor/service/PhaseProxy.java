@@ -55,7 +55,7 @@ public class PhaseProxy {
             return result;
         } catch (Throwable t) {
             long elapsed = System.currentTimeMillis() - start;
-            log.error("Phase [{}] failed. pipelineId={}, elapsed={}ms, error={}", stepId, pipelineId, elapsed, t.getMessage());
+            log.error("Phase [{}] failed. pipelineId={}, elapsed={}ms, error={}", stepId, pipelineId, elapsed, t.getClass().getSimpleName());
             throw t;
         }
     }

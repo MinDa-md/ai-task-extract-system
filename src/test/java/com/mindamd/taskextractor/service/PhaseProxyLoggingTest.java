@@ -96,7 +96,9 @@ class PhaseProxyLoggingTest {
 
         // then
         assertThat(listAppender.list)
-                .anyMatch(e -> e.getFormattedMessage().contains("failed"));
+                .anyMatch(e -> e.getFormattedMessage().contains("failed")
+                        && e.getFormattedMessage().contains("RuntimeException")
+                        && !e.getFormattedMessage().contains("api error"));
     }
 
     @Test

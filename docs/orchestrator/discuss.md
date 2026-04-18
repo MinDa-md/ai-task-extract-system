@@ -98,3 +98,11 @@ PhaseProxy는 phase 결과를 저장할 때 `phase.serialize()`를 호출하고,
 
 **기각된 대안 2**: Phase가 직접 DB를 조회해 복원
 - 모든 Phase에 DB 의존성이 생기며, DB 읽기 책임이 Orchestrator와 Phase에 분산된다
+
+**구현 제약**: `deserialize()` 구현 시 다음을 금지한다.
+- `mapper.activateDefaultTyping(...)` — 폴리모픽 역직렬화로 DB 오염 시 RCE 가능
+- `mapper.enableDefaultTyping(...)` — 위의 deprecated 전신, 동일하게 위험
+- `mapper.readValue(json, Object.class)` — 타입 미지정으로 임의 클래스 인스턴스화 가능
+- `ObjectInputStream` 기반 Java 네이티브 역직렬화
+
+반드시 구체 타입으로만 역직렬화한다: `mapper.readValue(json, MyPhaseData.class)`
