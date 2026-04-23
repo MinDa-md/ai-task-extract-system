@@ -1,0 +1,7 @@
+*.log
+build/
+gradle/
+HELP.md
+gradlew
+gradlew.*
+application-secret.yaml
