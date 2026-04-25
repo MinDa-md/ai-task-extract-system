@@ -1,76 +1,31 @@
-# CLAUDE.md
+## File Rules
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+- Do not read any file not explicitly mentioned — ask the user first.
+- For file/symbol search, prefer Serena MCP tools (`find_file`, `find_symbol`, `get_symbols_overview`, `search_for_pattern`) over built-in Glob/Grep tools.
 
-## Build & Run Commands
+## Command Rules
 
-```bash
-./gradlew build          # Full build
-./gradlew bootRun        # Run the application
-./gradlew test           # Run all tests
-./gradlew test --tests "com.mindamd.taskextractor.SomeTest"  # Run single test
-```
+- Do not run any bash command — ask the user first.
 
-Tests require Docker (Testcontainers spins up a MySQL container automatically).
+## Implementation Rules
 
-## Key Configuration
+- Never write or modify files under `src/main` without first running `/tdd-plan` and confirming the plan. Use `/tdd-run` to execute the confirmed plan.
 
-The application requires the following to be set externally (environment variables or `application-local.yaml`):
+## Response Rules
 
-- `spring.datasource.*` — MySQL connection details
-- `encryption.secret-key` — 32-byte AES-256 key used by `Aes256Util`
-- JDA bot token — for Discord integration (see `DiscordCommandListener`)
+- No greetings, empathetic openers, or closing remarks — e.g. "Hello!", "Great question!", "Hope this helps!"
+- No hedging — e.g. "you might want to consider", "it could be worth thinking about"
+- No filler or redundancy — e.g. "as mentioned above", "in summary", "it's worth noting"
+- No abstract language — use exact names, values, and types, not "appropriate", "relevant", "general"
+- If a request is ambiguous, ask one specific question before proceeding.
+- Omit explanation and context unless explicitly requested.
+- Code blocks, technical terms, and error messages verbatim.
 
-The base `application.yaml` only sets `spring.application.name=task-extractor`.
+## Naming Rules
 
-## Architecture
+- All class and method names must be English PascalCase/camelCase.
 
-This is a Discord bot that extracts and summarizes meeting information from chat logs while protecting user privacy. The trigger command is `/정리해줘` (Korean: "summarize for me").
+## Design Rules
 
-### Data Flow
-
-```
-Discord message (/정리해줘)
-  → DiscordCommandListener       (retrieves last 20 messages, extracts requestKey)
-  → SummaryService               (idempotency check via requestKey = Discord message ID)
-  → PrivacyFilterService         (pseudonymize: real data → [NAME_1], [PHONE_1], [LOC_1])
-  → GeminiApiClient              (TODO: sends pseudonymized text, gets structured summary)
-  → SummaryRepository            (persist: CryptoConverter AES-256 encrypts secureDictionary)
-  → buildResponseDto             (decrypt dictionary → restore original → apply DTO masking)
-  → Discord response             (@PrivacyMasking serializer masks fields in JSON output)
-```
-
-### Three-Layer Privacy Model
-
-| Layer | Where | Mechanism | Purpose |
-|-------|-------|-----------|---------|
-| Pseudonymization | Before LLM call | `PrivacyFilterService` regex replacement | Keep real data out of external AI APIs |
-| DB Encryption | Before DB write | `CryptoConverter` + `Aes256Util` (AES-256 ECB) | Protect `secureDictionary` at rest |
-| Response Masking | At JSON serialization | `@PrivacyMasking` + `PrivacyMaskingSerializer` | Partially obfuscate data in API/Discord responses |
-
-### Package Structure
-
-```
-com.mindamd.taskextractor
-├── presentation/discord/    DiscordCommandListener — entry point from JDA events
-├── service/                 SummaryService — orchestrates the full flow
-├── domain/
-│   ├── entity/              Summary — JPA entity (MEETING_SUMMARY table)
-│   ├── repository/          SummaryRepository — idempotency queries
-│   └── dto/                 PrivacyMasking annotation, MaskingType enum, response DTOs
-├── global/
-│   ├── security/            Aes256Util, PrivacyFilterService
-│   └── converter/           CryptoConverter — JPA AttributeConverter for encryption
-└── infrastructure/ai/       GeminiApiClient (stub), PromptGenerator (stub)
-```
-
-**MEETING_SUMMARY:** `id`, `discord_channel_id`, `meeting_time`, `location` (pseudonymized), `participants_info` (pseudonymized), `secure_dictionary` (AES-encrypted JSON), `request_key` (UNIQUE for idempotency), `created_at`
-
-**AUDIT_LOG** (planned): tracks admin access to sensitive data — `target_summary_id`, `admin_id`, `access_reason`, `accessed_at`
-
-### What's Not Yet Implemented
-
-- `GeminiApiClient.summarize()` throws `UnsupportedOperationException` — Google Gemini API call is a stub
-- `PromptGenerator` is empty
-- `global/config/` package is empty
-- `domain/repository/JpaRepository.java` is a placeholder
+- Never reverse a decision recorded in `docs/orchestrator/discuss.md`.
+- If an implementation require adopting a rejected alternative from an ADR, stop and explain why to the user before proceeding.
