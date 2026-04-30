@@ -1,8 +1,8 @@
 package com.mindamd.taskextractor.domain;
 
-public interface Phase {
+public interface Step {
 
-    String getStepId();
+    Integer getStepOrder();
 
     PhaseData execute(String pipelineId, PhaseData input);
 

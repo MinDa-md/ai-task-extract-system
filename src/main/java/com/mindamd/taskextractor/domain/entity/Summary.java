@@ -1,6 +1,5 @@
 package com.mindamd.taskextractor.domain.entity;
 
-import com.mindamd.taskextractor.global.converter.CryptoConverter;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -32,11 +31,12 @@ public class Summary {
     @Column(name = "participants_info")
     private String participantsInfo; // 가명 처리된 상태로 저장 (예: [NAME_1] [PHONE_1])
 
-    // 가명 → 원본 매핑 사전을 JSON 직렬화 후 AES-256 암호화하여 저장
-    // 민감 정보가 없는 경우(가명 치환 없음) NULL 허용
-    @Convert(converter = CryptoConverter.class)
     @Column(name = "secure_dictionary", columnDefinition = "TEXT")
     private String secureDictionary;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pipeline_id")
+    private Pipeline pipeline;
 
     public Summary(String requestKey, String channelId, String meetingTime,
                    String location, String participantsInfo, String secureDictionary) {

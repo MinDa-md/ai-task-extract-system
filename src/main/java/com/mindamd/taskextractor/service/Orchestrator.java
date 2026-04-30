@@ -1,87 +1,74 @@
 package com.mindamd.taskextractor.service;
 
-import com.mindamd.taskextractor.domain.Phase;
+import com.mindamd.taskextractor.domain.Step;
 import com.mindamd.taskextractor.domain.PhaseData;
-import com.mindamd.taskextractor.domain.PipelineStatus;
+import com.mindamd.taskextractor.domain.entity.PhaseExecution;
 import com.mindamd.taskextractor.domain.entity.Pipeline;
+import com.mindamd.taskextractor.domain.repository.PhaseExecutionRepository;
 import com.mindamd.taskextractor.domain.repository.PipelineRepository;
 import com.mindamd.taskextractor.global.exception.NonRecoverableException;
-import com.mindamd.taskextractor.global.exception.RecoverableException;
-import org.slf4j.MDC;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class Orchestrator {
 
-    private final List<Phase> phases;
-    private final PipelineRepository repository;
-
-    public Orchestrator(List<Phase> phases, PipelineRepository repository) {
-        if (phases.isEmpty()) {
-            throw new IllegalArgumentException("phases must not be empty");
-        }
-        this.phases = phases;
-        this.repository = repository;
-    }
+    private final PipelineRepository pipelineRepository;
+    private final PhaseExecutionRepository phaseRepository;
+    private final List<Step> steps;
 
     public PhaseData run(String pipelineId, PhaseData initial) {
-        MDC.put("req_id", pipelineId);
-        try {
-            Optional<Pipeline> existing = repository.findById(pipelineId);
+        Optional<Pipeline> existing = pipelineRepository.findById(pipelineId);
+        Pipeline pipeline;
+        Integer stepOrder;
 
-            if (existing.isEmpty()) {
-                Pipeline pipeline = Pipeline.builder().id(pipelineId).build();
-                return executePhases(pipeline, initial);
+        if (existing.isEmpty()) {
+            pipeline = pipelineRepository.save(new Pipeline(pipelineId));
+            stepOrder = 0;
+        } else {
+            pipeline = existing.get();
+            if (pipeline.isCompleted()) {
+                // TODO: 이미 해당 요청은 이전에 완료되었음을 전달
             }
-
-            Pipeline pipeline = existing.get();
-            return switch (pipeline.getPipelineStatus()) {
-                case SUCCESS -> restoreLastResult(pipeline);
-                case RUNNING -> throw new IllegalStateException("Pipeline already running: " + pipelineId);
-                case FINAL_FAILED -> throw new NonRecoverableException("Pipeline permanently failed: " + pipelineId);
-                case FAILED -> executePhases(pipeline, initial);
-                case PENDING -> throw new IllegalStateException("Unexpected PENDING status: " + pipelineId);
-            };
-        } finally {
-            MDC.remove("req_id");
+            if (pipeline.isFinalFailed()) {
+                throw new NonRecoverableException("Pipeline permanently failed: " + pipelineId);
+            }
+            stepOrder = phaseRepository.findLastCompletedStepOrder(pipelineId);
         }
+
+        List<Step> sortedStep = steps.stream()
+                .sorted(Comparator.comparingInt(Step::getStepOrder))
+                .filter(step -> step.getStepOrder() > stepOrder)
+                .toList();
+
+        return execute(pipeline, sortedStep, initial);
     }
 
-    private PhaseData executePhases(Pipeline pipeline, PhaseData initial) {
-        pipeline.markRunning();
-        repository.save(pipeline);
-
-        PhaseData current = initial;
+    private PhaseData execute(Pipeline pipeline, List<Step> steps, PhaseData current) {
         try {
-            for (Phase phase : phases) {
-                current = phase.execute(pipeline.getId(), current);
+            for(Step step : steps) {
+                current = step.execute(pipeline.getId(), current);
+                phaseRepository.save(PhaseExecution.builder()
+                        .stepOrder(step.getStepOrder())
+                        .result(step.serialize(current))
+                        .pipeline(pipeline)
+                        .build());
             }
-        } catch (RecoverableException e) {
-            pipeline.recordFailure(PipelineStatus.FAILED);
-            repository.save(pipeline);
-            throw e;
-        } catch (NonRecoverableException e) {
-            pipeline.recordFailure(PipelineStatus.FINAL_FAILED);
-            repository.save(pipeline);
+        } // RecoverableException은 별도 처리 없이 그대로 전파
+        catch (NonRecoverableException e) {
+            pipeline.markFinalFailed();
+            pipelineRepository.save(pipeline);
             throw e;
         }
 
-        String finalResult = lastPhase().serialize(current);
-        pipeline.complete(LocalDateTime.now(), finalResult);
-        repository.save(pipeline);
+        pipeline.markCompleted();
+        pipelineRepository.save(pipeline);
 
         return current;
-    }
-
-    private PhaseData restoreLastResult(Pipeline pipeline) {
-        return lastPhase().deserialize(pipeline.getFinalResult());
-    }
-
-    private Phase lastPhase() {
-        return phases.get(phases.size() - 1);
     }
 }
