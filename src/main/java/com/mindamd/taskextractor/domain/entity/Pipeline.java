@@ -7,8 +7,6 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "pipeline")
@@ -28,12 +26,6 @@ public class Pipeline {
 
     @Enumerated(EnumType.STRING)
     private PipelineStatus status = PipelineStatus.RUNNING;
-
-    @OneToMany(mappedBy = "pipeline")
-    private List<Checkpoint> checkpoints = new ArrayList<>();
-
-    @OneToOne(mappedBy = "pipeline")
-    private Summary summary;
 
     public void markFinalFailed() {
         this.status = PipelineStatus.FINAL_FAILED;
