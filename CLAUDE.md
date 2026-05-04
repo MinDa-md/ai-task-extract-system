@@ -7,10 +7,6 @@
 
 - Do not run any bash command — ask the user first.
 
-## Implementation Rules
-
-- Never write or modify files under `src/main` without first running `/tdd-plan` and confirming the plan. Use `/tdd-run` to execute the confirmed plan.
-
 ## Response Rules
 
 - No greetings, empathetic openers, or closing remarks — e.g. "Hello!", "Great question!", "Hope this helps!"
@@ -20,12 +16,8 @@
 - If a request is ambiguous, ask one specific question before proceeding.
 - Omit explanation and context unless explicitly requested.
 - Code blocks, technical terms, and error messages verbatim.
+- Do not compress multiple ideas into one sentence. Write one idea per sentence.
 
 ## Naming Rules
 
 - All class and method names must be English PascalCase/camelCase.
-
-## Design Rules
-
-- Never reverse a decision recorded in `docs/orchestrator/discuss.md`.
-- If an implementation require adopting a rejected alternative from an ADR, stop and explain why to the user before proceeding.
