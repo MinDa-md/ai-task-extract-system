@@ -10,9 +10,9 @@ import org.springframework.stereotype.Component;
 
 @Aspect
 @Component
-public class PhaseProxy {
+public class StepProxy {
 
-    private static final Logger log = LoggerFactory.getLogger(PhaseProxy.class);
+    private static final Logger log = LoggerFactory.getLogger(StepProxy.class);
 
     @Around("execution(* com.mindamd.taskextractor.domain.Step.execute(..))")
     public Object intercept(ProceedingJoinPoint pjp) throws Throwable {

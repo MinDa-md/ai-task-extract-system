@@ -4,9 +4,9 @@ public interface Step {
 
     Integer getStepOrder();
 
-    PhaseData execute(String pipelineId, PhaseData input);
+    StepData execute(String pipelineId, StepData input);
 
-    String serialize(PhaseData result);
+    String serialize(StepData result);
 
-    PhaseData deserialize(String json);
+    StepData deserialize(String json);
 }

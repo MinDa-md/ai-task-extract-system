@@ -1,4 +1,4 @@
 package com.mindamd.taskextractor.domain;
 
-public interface PhaseData {
+public interface StepData {
 }

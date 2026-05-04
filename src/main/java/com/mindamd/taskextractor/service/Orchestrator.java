@@ -1,66 +1,63 @@
 package com.mindamd.taskextractor.service;
 
 import com.mindamd.taskextractor.domain.Step;
-import com.mindamd.taskextractor.domain.PhaseData;
-import com.mindamd.taskextractor.domain.entity.PhaseExecution;
+import com.mindamd.taskextractor.domain.StepData;
+import com.mindamd.taskextractor.domain.entity.Checkpoint;
 import com.mindamd.taskextractor.domain.entity.Pipeline;
-import com.mindamd.taskextractor.domain.repository.PhaseExecutionRepository;
+import com.mindamd.taskextractor.domain.repository.CheckpointRepository;
 import com.mindamd.taskextractor.domain.repository.PipelineRepository;
 import com.mindamd.taskextractor.global.exception.NonRecoverableException;
-import lombok.RequiredArgsConstructor;
+import com.mindamd.taskextractor.global.exception.RecoverableException;
 import org.springframework.stereotype.Service;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class Orchestrator {
 
     private final PipelineRepository pipelineRepository;
-    private final PhaseExecutionRepository phaseRepository;
-    private final List<Step> steps;
+    private final CheckpointRepository checkpointRepository;
+    private final TreeMap<Integer, Step> steps;
 
-    public PhaseData run(String pipelineId, PhaseData initial) {
-        Optional<Pipeline> existing = pipelineRepository.findById(pipelineId);
-        Pipeline pipeline;
-        Integer stepOrder;
-
-        if (existing.isEmpty()) {
-            pipeline = pipelineRepository.save(new Pipeline(pipelineId));
-            stepOrder = 0;
-        } else {
-            pipeline = existing.get();
-            if (pipeline.isCompleted()) {
-                // TODO: 이미 해당 요청은 이전에 완료되었음을 전달
-            }
-            if (pipeline.isFinalFailed()) {
-                throw new NonRecoverableException("Pipeline permanently failed: " + pipelineId);
-            }
-            stepOrder = phaseRepository.findLastCompletedStepOrder(pipelineId);
-        }
-
-        List<Step> sortedStep = steps.stream()
-                .sorted(Comparator.comparingInt(Step::getStepOrder))
-                .filter(step -> step.getStepOrder() > stepOrder)
-                .toList();
-
-        return execute(pipeline, sortedStep, initial);
+    public Orchestrator(PipelineRepository pipelineRepository,
+                        CheckpointRepository checkpointRepository,
+                        List<Step> steps) {
+        this.pipelineRepository = pipelineRepository;
+        this.checkpointRepository = checkpointRepository;
+        this.steps = new TreeMap<>(steps.stream()
+                .collect(Collectors.toMap(Step::getStepOrder, Function.identity())));
     }
 
-    private PhaseData execute(Pipeline pipeline, List<Step> steps, PhaseData current) {
+    public Pipeline run(String pipelineId, StepData initial) {
+        Pipeline pipeline = loadPipeline(pipelineId);
+
+        // 이전에 성공한 파이프라인
+        if(pipeline.isCompleted()) {
+            steps.lastEntry().getValue().execute(pipeline.getId(), initial);
+            return pipeline;
+        }
+
+        //  재시도 불가능 파이프라인
+        if (pipeline.isFinalFailed()) {
+            throw new NonRecoverableException("Pipeline permanently failed: " + pipelineId);
+        }
+
+        // 재시도 지점 가져오기
+        ResumePoint resumePoint = loadCheckpoint(pipelineId, initial);
+
+        // 각 단계 실행
         try {
-            for(Step step : steps) {
-                current = step.execute(pipeline.getId(), current);
-                phaseRepository.save(PhaseExecution.builder()
-                        .stepOrder(step.getStepOrder())
-                        .result(step.serialize(current))
-                        .pipeline(pipeline)
-                        .build());
+            StepData current = resumePoint.data();
+            for (Step step : steps.tailMap(resumePoint.stepOrder(), false).values()) {
+                current = execute(pipeline, step, current);
             }
-        } // RecoverableException은 별도 처리 없이 그대로 전파
-        catch (NonRecoverableException e) {
+        } catch (RecoverableException e) {
+            pipeline.markFailed();
+            pipelineRepository.save(pipeline);
+            throw e;
+        } catch (NonRecoverableException e) {
             pipeline.markFinalFailed();
             pipelineRepository.save(pipeline);
             throw e;
@@ -68,7 +65,37 @@ public class Orchestrator {
 
         pipeline.markCompleted();
         pipelineRepository.save(pipeline);
+        return pipeline;
+    }
 
-        return current;
+    private Pipeline loadPipeline(String pipelineId) {
+        Optional<Pipeline> existing = pipelineRepository.findById(pipelineId);
+        return existing.orElseGet(() -> pipelineRepository.save(new Pipeline(pipelineId)));
+    }
+
+    private ResumePoint loadCheckpoint(String pipelineId, StepData initial) {
+        Optional<Checkpoint> existing  = checkpointRepository.findTopByPipelineIdOrderByStepOrderDesc(pipelineId);
+        // 체크포인트 없음
+        if(existing.isEmpty()) {
+            return new ResumePoint(0, initial);
+        }
+
+        // 체크포인트 있음
+        Checkpoint checkpoint = existing.get();
+        Step step = steps.get(checkpoint.getStepOrder());
+        StepData data = step.deserialize(checkpoint.getResult());
+        return new ResumePoint(checkpoint.getStepOrder(), data);
+    }
+
+    private record ResumePoint(int stepOrder, StepData data) {}
+
+    private StepData execute(Pipeline pipeline, Step step, StepData current) {
+        StepData result = step.execute(pipeline.getId(), current);
+        checkpointRepository.save(Checkpoint.builder()
+                .stepOrder(step.getStepOrder())
+                .result(step.serialize(result))
+                .pipeline(pipeline)
+                .build());
+        return result;
     }
 }

@@ -8,11 +8,11 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "phase", uniqueConstraints = @UniqueConstraint(columnNames = {"pipeline_id", "step_id"}))
+@Table(name = "checkpoint", uniqueConstraints = @UniqueConstraint(columnNames = {"pipeline_id", "step_order"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
-public class PhaseExecution {
+public class Checkpoint {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,7 +33,7 @@ public class PhaseExecution {
     private Pipeline pipeline;
 
     @Builder
-    public PhaseExecution(Integer stepOrder, String result, Pipeline pipeline) {
+    public Checkpoint(Integer stepOrder, String result, Pipeline pipeline) {
         this.stepOrder = stepOrder;
         this.result = result;
         this.pipeline = pipeline;

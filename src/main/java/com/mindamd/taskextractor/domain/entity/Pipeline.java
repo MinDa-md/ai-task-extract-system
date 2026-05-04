@@ -1,5 +1,6 @@
 package com.mindamd.taskextractor.domain.entity;
 
+import com.mindamd.taskextractor.domain.PipelineStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -17,7 +18,6 @@ import java.util.List;
 public class Pipeline {
 
     @Id
-    @Column(name = "id")
     private String id;
 
     @CreatedDate
@@ -26,28 +26,36 @@ public class Pipeline {
 
     private LocalDateTime completedAt;
 
-    @Column(nullable = false)
-    private boolean finalFailed = false;
+    @Enumerated(EnumType.STRING)
+    private PipelineStatus status = PipelineStatus.RUNNING;
 
     @OneToMany(mappedBy = "pipeline")
-    private List<PhaseExecution> phases = new ArrayList<>();
+    private List<Checkpoint> checkpoints = new ArrayList<>();
 
     @OneToOne(mappedBy = "pipeline")
     private Summary summary;
 
     public void markFinalFailed() {
-        this.finalFailed = true;
+        this.status = PipelineStatus.FINAL_FAILED;
     }
 
     public void markCompleted() {
         this.completedAt = LocalDateTime.now();
+        this.status = PipelineStatus.SUCCESS;
+    }
+
+    public void markFailed() {
+        this.status = PipelineStatus.FAILED;
     }
 
     public boolean isCompleted() {
-        return completedAt != null;
+        return status == PipelineStatus.SUCCESS;
     }
+
+    public boolean isFinalFailed() { return status == PipelineStatus.FINAL_FAILED; }
 
     public Pipeline(String id) {
         this.id = id;
     }
+
 }
