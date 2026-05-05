@@ -3,6 +3,10 @@ package com.mindamd.taskextractor.domain.dto;
 import lombok.Builder;
 import lombok.Getter;
 
+/*
+    복원된 정보들 (장소, 전화번호)
+ */
+
 @Getter
 @Builder
 public class SummaryResponseDto {
@@ -10,10 +14,10 @@ public class SummaryResponseDto {
     private String meetingTime;
 
     @PrivacyMasking(type = MaskingType.LOCATION)
-    private String location; // 복원된 원본 장소 (직렬화 시 마스킹 적용)
+    private String location;
 
     @PrivacyMasking(type = MaskingType.PHONE)
-    private String participantsInfo; // 복원된 원본 참여자 정보 (직렬화 시 전화번호 마스킹)
+    private String participantsInfo;
 
     // 디스코드 출력용 포맷팅
     public String getFormattedMessage() {

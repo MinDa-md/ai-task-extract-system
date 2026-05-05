@@ -13,7 +13,9 @@ import lombok.NoArgsConstructor;
         })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class MeetingParticipant {
+public class
+
+MeetingParticipant {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

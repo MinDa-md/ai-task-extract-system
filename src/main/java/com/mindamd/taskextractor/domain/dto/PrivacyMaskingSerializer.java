@@ -11,10 +11,8 @@ public class PrivacyMaskingSerializer extends ValueSerializer<String> {
 
     private MaskingType maskingType;
 
-    // 기본 생성자 (Jackson 리플렉션용)
     public PrivacyMaskingSerializer() {}
 
-    // 타입 주입용 생성자
     public PrivacyMaskingSerializer(MaskingType maskingType) {
         this.maskingType = maskingType;
     }
@@ -33,7 +31,6 @@ public class PrivacyMaskingSerializer extends ValueSerializer<String> {
                 maskedValue = value.replaceAll("(\\d{3})-?(\\d{4})-?(\\d{4})", "$1-****-****");
                 break;
             case NAME:
-                // 이름이 2글자면 성 빼고 마스킹 (이*), 3글자 이상이면 가운데 마스킹 (홍*동)
                 if (value.length() == 2) {
                     maskedValue = value.replaceAll("(?<=.{1}).", "*");
                 } else if (value.length() > 2) {
@@ -53,8 +50,6 @@ public class PrivacyMaskingSerializer extends ValueSerializer<String> {
         gen.writeString(maskedValue);
     }
 
-    // ★ 핵심: DTO 필드에 붙은 어노테이션 정보를 읽어와서 Serializer를 새로 세팅해주는 역할
-    // Jackson 3.x에서는 ContextualSerializer 인터페이스가 ValueSerializer에 통합됨
     @Override
     public ValueSerializer<?> createContextual(SerializationContext prov, BeanProperty property) throws JacksonException {
         if (property != null) {
