@@ -11,6 +11,12 @@
 
 ## 구현
 
+### Pipeline Status
+
+- `RUNNING`: 실행 중, 재시도 가능
+- `SUCCESS`: 성공
+- `FAILED`: 재시도 불가능
+
 ### StepData / Step 인터페이스
 
 `StepData`: 단계 간 데이터 전달의 마커 인터페이스
@@ -27,6 +33,7 @@
 예외 클래스: 
 - `RecoverableException`: 재시도 가능한 예외
 - `NonRecoverableException`: 재시도 불가능한 예외
+- `ConcurrentPipelineException`: 이미 진행중인 파이프라인 예외 (동시성)
 
 ### StepProxy
 
@@ -42,7 +49,8 @@ CREATE TABLE `Pipeline`
     `id`              VARCHAR(36) NOT NULL,
     `created_at`      TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `completed_at`    TIMESTAMP   NULL,
-    `status`          ENUM('RUNNING', 'SUCCESS', 'FAILED', 'FINAL_FAILED') NOT NULL DEFAULT 'RUNNING'
+    `status`          ENUM('RUNNING', 'SUCCESS', 'FAILED', 'FINAL_FAILED') NOT NULL DEFAULT 'RUNNING',
+    `run_count`       INT         NOT NULL
 );
 
 CREATE TABLE `Checkpoint`

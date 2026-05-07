@@ -49,14 +49,16 @@
 
 ---
 
-## ADR-004: FAILED와 FINAL_FAILED를 구분한다
+## ADR-004: FAILED는 영구 실패를 나타낸다
 
-**결정**: 실패 상태를 `FAILED`(재실행 허용)와 `FINAL_FAILED`(재실행 차단) 두 가지로 나눈다.
+**결정**: 단일 `FAILED` 상태로 영구 실패를 표현한다. 재시도 가능 여부는 `RUNNING` 상태가 담당한다.
+
+- **RUNNING**: 일시적 실패 후 재시도 대기 상태
+- **FAILED**: `NonRecoverableException` 발생 또는 runCount 한계 초과 시 전이. 이후 `run()` 호출 시 즉시 `NonRecoverableException` 발생
 
 **이유**:
-- "재실행"은 애플리케이션 코드를 고치지 않아도 시간이 지나거나 외부 상황이 바뀌면 성공할 가능성이 있는 경우에만 허용한다
-- `NonRecoverableException`(비즈니스 검증 실패, 런타임 버그 등)은 재실행해도 동일하게 실패하므로 차단이 맞다
-- 재실행 가능 여부를 상태 자체에 인코딩하면 Orchestrator 진입 시 DB 조회 한 번으로 분기할 수 있다
+- 초기 설계의 `FAILED`(재실행 허용)와 `FINAL_FAILED`(재실행 차단) 구분은 `RUNNING`이 이미 "재시도 가능" 상태를 표현하므로 불필요하다
+- 상태 수를 최소화하면 Orchestrator 진입 분기 조건이 단순해진다
 
 ---
 
@@ -126,11 +128,18 @@ AOP 기반 캐싱을 `@Aspect StepProxy`로 구현하는 방안. StepProxy가 Ch
 
 ## ADR-010: Pipeline이 상태를 직접 소유한다
 
-**결정**: `Pipeline`은 `RUNNING / SUCCESS / FAILED / FINAL_FAILED` 상태를 `PipelineStatus` enum으로 직접 보유한다. Orchestrator 진입 및 종료 시 상태를 명시적으로 갱신하며, `pipeline.status`가 상태 판단의 단일 신뢰 소스다.
+**결정**: `Pipeline`은 `RUNNING / SUCCESS / FAILED` 세 가지 상태를 `PipelineStatus` enum으로 직접 보유한다. Orchestrator 진입 및 종료 시 상태를 명시적으로 갱신하며, `pipeline.status`가 상태 판단의 단일 신뢰 소스다.
+
+| 상태 | 의미 |
+|---|---|
+| `RUNNING` | 실행 중이거나 회복 가능한 실패 후 재시도 대기 |
+| `SUCCESS` | 파이프라인 정상 완료 |
+| `FAILED` | runCount 한계 초과 또는 `NonRecoverableException`으로 영구 실패 |
 
 **이유**:
 - 레코드 존재 여부와 플래그 조합으로 상태를 판별하는 방식(ADR-008)은 판단 로직을 읽는 사람이 데이터 조합을 머릿속으로 해석해야 하는 부담을 만든다
 - 상태 값이 단일 컬럼에 명시적으로 기록되면 Orchestrator 진입 시 조회 한 번으로 분기할 수 있다
+- ADR-004 초기 설계의 `FINAL_FAILED`는 `RUNNING`이 이미 재시도 가능 상태를 표현하므로 제거했다
 
 **기각된 대안**: 행동 기반 판별 (ADR-008)
 - `summary` 행 존재 여부, `final_failed` 플래그 등 여러 데이터를 조합해야 하므로 가독성이 낮다
@@ -185,16 +194,43 @@ AOP 기반 캐싱을 `@Aspect StepProxy`로 구현하는 방안. StepProxy가 Ch
 
 ---
 
-## ADR-014: 마지막 Step은 delivery 전용이다
+## ADR-014: 첫 번째와 마지막 Step은 경계 Step으로 예약한다
 
-**결정**: Step 목록의 마지막 Step은 delivery 전용으로 예약한다. 이전 Step의 결과를 사용자에게 전송하는 단일 책임을 가지며, `execute()`의 입력·출력 값은 의미 없다.
+**결정**: Step 목록의 첫 번째(stepOrder=0)와 마지막(stepOrder=99) 위치는 각각 ingest와 delivery 전용 경계 Step으로 예약한다. 두 경계 Step은 Orchestrator 내부 TreeMap에 등록되며, 처리 Step과 동일한 체크포인트 기반 재시도 로직을 따른다.
 
-이미 완료된(`SUCCESS`) 파이프라인에 `run()`이 재호출될 때, Orchestrator는 루프 없이 마지막 Step만 직접 실행한다.
+- **IngestStep(stepOrder=0)**: 컨트롤러가 전달한 외부 입력을 파이프라인 내부 StepData로 변환한다
+- **DeliveryStep(stepOrder=99)**: 파이프라인 결과를 외부로 전송한다. `execute()` 입력은 무시하고 Repository에서 직접 조회한다
+
+`loadCheckpoint()`가 체크포인트 없을 때 `INGEST_STEP_ORDER - 1 = -1`을 반환하므로, `tailMap(-1, false)`는 IngestStep(0)을 포함한 모든 Step을 실행한다. IngestStep 성공 후 체크포인트(stepOrder=0)가 저장되면, 재시도 시 `tailMap(0, false)`로 IngestStep을 자동으로 건너뛴다.
+
+이미 완료된(`SUCCESS`) 파이프라인에 `run()`이 재호출될 때, Orchestrator는 루프 없이 DeliveryStep만 직접 실행한다.
 
 **이유**:
-- delivery를 Step으로 통합하면 Orchestrator 루프를 단순한 순회 구조로 유지할 수 있다
-- 완료된 파이프라인의 재호출 경로에서도 별도 분기 없이 마지막 Step 하나만 실행하면 된다
+- 두 경계 Step을 내부 TreeMap에 통합하면 컨트롤러는 `orchestrator.run()`만 호출하면 된다. 경계 Step 실행 책임이 Orchestrator 외부로 분산되지 않는다
+- `tailMap(-1, false)` 시작점 설계로, IngestStep의 첫 실행 포함과 재시도 시 스킵이 별도 분기 없이 처리된다. 처리 Step의 체크포인트 재시작 로직과 동일하다
+
+**기각된 대안**: IngestStep / DeliveryStep을 Orchestrator 외부에서 호출
+- 컨트롤러가 경계 Step 실행 순서와 완료 조건을 직접 관리해야 한다
+- 파이프라인 재시도 시 IngestStep 중복 실행 방지 로직이 Orchestrator 외부에 필요해진다
 
 **제약**:
-- Step 목록에 delivery Step은 반드시 하나이며 항상 마지막 위치여야 한다
-- delivery Step의 `serialize()` / `deserialize()`는 호출되더라도 의미 있는 값을 반환할 필요가 없다
+- IngestStep은 stepOrder=0, DeliveryStep은 stepOrder=99로 고정이며, 처리 Step의 stepOrder는 1~98 사이여야 한다
+- DeliveryStep의 `serialize()` / `deserialize()`는 호출되더라도 의미 있는 값을 반환할 필요가 없다
+
+---
+
+## ADR-015: Orchestrator는 at-least-once 실행을 보장한다. delivery step의 멱등성은 Step 책임이다
+
+**결정**: Orchestrator는 step의 exactly-once 실행을 보장하지 않는다. delivery step 개발자는 외부 발송 서비스의 idempotency key를 사용해 중복 발송을 직접 방어해야 한다.
+
+**이유**:
+- `step.execute()`가 정상 반환해도 `checkpointRepository.save()`가 실패하면 `pipeline.status`는 `RUNNING`으로 남는다. retry 시 delivery step이 재실행되어 중복 발송이 발생한다
+- `step.execute()`는 외부 네트워크 호출을 포함하므로 checkpoint 저장과 원자적으로 묶을 수 없다 (ADR-003)
+- DB 기반 중복 방지(별도 테이블 기록)는 checkpoint 저장 실패를 유발한 DB 장애 시 동일하게 실패한다. DB에 의존하는 어떤 방식도 DB 전체 장애에 대해 근본적 한계를 가진다
+- 외부 발송 서비스가 idempotency key를 지원하면 `pipelineId`를 key로 전달해 서비스 레벨에서 중복을 차단할 수 있다. 이 책임은 외부 서비스를 직접 아는 delivery step 개발자에게 있다
+
+**제약**:
+- delivery step 개발자는 사용하는 외부 발송 서비스의 idempotency key 지원 여부를 반드시 확인해야 한다
+- 외부 서비스가 idempotency key를 지원하지 않는 경우, 아래 두 전략 중 하나를 명시적으로 선택하고 트레이드오프를 문서화해야 한다
+  - at-least-once (기본 동작): 중복 발송 가능, 미발송 없음
+  - at-most-once: 발송 전 `delivery_records` 테이블에 기록 후 발송. 중복 발송 없음, DB 장애 시 미발송 가능
