@@ -25,10 +25,14 @@ public class Pipeline {
     private LocalDateTime completedAt;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private PipelineStatus status = PipelineStatus.RUNNING;
 
-    public void markFinalFailed() {
-        this.status = PipelineStatus.FINAL_FAILED;
+    @Column(nullable = false)
+    private Integer runCount = 0;
+
+    public void markFailed() {
+        this.status = PipelineStatus.FAILED;
     }
 
     public void markCompleted() {
@@ -36,18 +40,28 @@ public class Pipeline {
         this.status = PipelineStatus.SUCCESS;
     }
 
-    public void markFailed() {
-        this.status = PipelineStatus.FAILED;
+    public void incrementRunCount() {
+        this.runCount++;
     }
 
     public boolean isCompleted() {
         return status == PipelineStatus.SUCCESS;
     }
 
-    public boolean isFinalFailed() { return status == PipelineStatus.FINAL_FAILED; }
+    public boolean isFailed() {
+        return status == PipelineStatus.FAILED;
+    }
 
-    public Pipeline(String id) {
+    public boolean isRunCountExceeded() {
+        return runCount >= 3;
+    }
+
+    private Pipeline(String id) {
         this.id = id;
+    }
+
+    public static Pipeline of(String id) {
+        return new Pipeline(id);
     }
 
 }

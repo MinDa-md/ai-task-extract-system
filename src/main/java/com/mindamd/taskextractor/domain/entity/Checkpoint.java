@@ -1,7 +1,9 @@
 package com.mindamd.taskextractor.domain.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.AccessLevel;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -32,10 +34,13 @@ public class Checkpoint {
     @JoinColumn(name = "pipeline_id")
     private Pipeline pipeline;
 
-    @Builder
-    public Checkpoint(Integer stepOrder, String result, Pipeline pipeline) {
+    private Checkpoint(Integer stepOrder, String result, Pipeline pipeline) {
         this.stepOrder = stepOrder;
         this.result = result;
         this.pipeline = pipeline;
+    }
+
+    public static Checkpoint of(Integer stepOrder, String result, Pipeline pipeline) {
+        return new Checkpoint(stepOrder, result, pipeline);
     }
 }
