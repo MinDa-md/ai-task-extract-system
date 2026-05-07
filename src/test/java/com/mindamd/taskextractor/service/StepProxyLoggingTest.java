@@ -53,14 +53,14 @@ class StepProxyLoggingTest {
     }
 
     @Test
-    void tc08_stepStarted_infoLogRecorded() throws Throwable {
+    void tc10_stepStarted_infoLogRecorded() throws Throwable {
         when(pjp.proceed()).thenReturn(mock(StepData.class));
         stepProxy.intercept(pjp);
         assertThat(appender.list.getFirst().getLevel()).isEqualTo(Level.INFO);
     }
 
     @Test
-    void tc09_stepCompleted_infoLogRecorded() throws Throwable {
+    void tc11_stepCompleted_infoLogRecorded() throws Throwable {
         when(pjp.proceed()).thenReturn(mock(StepData.class));
         stepProxy.intercept(pjp);
         long infoCount = appender.list.stream()
@@ -70,7 +70,7 @@ class StepProxyLoggingTest {
     }
 
     @Test
-    void tc10_stepFailed_errorLogRecorded() throws Throwable {
+    void tc12_stepFailed_errorLogRecorded() throws Throwable {
         when(pjp.proceed()).thenThrow(new RuntimeException("boom"));
         assertThatThrownBy(() -> stepProxy.intercept(pjp))
                 .isInstanceOf(RuntimeException.class);
