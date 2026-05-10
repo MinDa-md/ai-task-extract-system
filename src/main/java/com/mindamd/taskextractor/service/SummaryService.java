@@ -1,7 +1,5 @@
 package com.mindamd.taskextractor.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindamd.taskextractor.domain.dto.SummaryResponseDto;
 import com.mindamd.taskextractor.domain.entity.Summary;
 import com.mindamd.taskextractor.domain.repository.SummaryRepository;
@@ -9,6 +7,8 @@ import com.mindamd.taskextractor.global.security.PrivacyFilterService;
 import com.mindamd.taskextractor.infrastructure.ai.GeminiApiClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.Map;
@@ -87,6 +87,7 @@ public class SummaryService {
         if (secureDictionary == null || secureDictionary.isBlank()) {
             return Map.of();
         }
-        return objectMapper.readValue(secureDictionary, new TypeReference<Map<String, String>>() {});
+        return objectMapper.readValue(secureDictionary, new TypeReference<>() {
+        });
     }
 }
