@@ -1,6 +1,6 @@
 package com.mindamd.taskextractor;
 
-import com.mindamd.taskextractor.domain.Phase;
+import com.mindamd.taskextractor.domain.Step;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -10,7 +10,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 @SpringBootTest
 class TaskExtractorApplicationTests {
 
-    @MockitoBean Phase stubPhase;
+    @MockitoBean
+    Step stubStep;
 
     @Test
     void contextLoads() {
