@@ -1,6 +1,5 @@
-package com.mindamd.taskextractor.global.converter;
+package com.mindamd.taskextractor.global.util;
 
-import com.mindamd.taskextractor.global.security.Aes256Util;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 

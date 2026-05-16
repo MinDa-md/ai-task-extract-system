@@ -1,4 +1,4 @@
-package com.mindamd.taskextractor.domain.dto;
+package com.mindamd.taskextractor.step.filter.dto;
 
 import com.fasterxml.jackson.annotation.JacksonAnnotationsInside;
 import tools.jackson.databind.annotation.JsonSerialize;

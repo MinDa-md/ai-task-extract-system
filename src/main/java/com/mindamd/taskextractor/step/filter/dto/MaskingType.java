@@ -1,4 +1,4 @@
-package com.mindamd.taskextractor.domain.dto;
+package com.mindamd.taskextractor.step.filter.dto;
 
 public enum MaskingType {
     PHONE,

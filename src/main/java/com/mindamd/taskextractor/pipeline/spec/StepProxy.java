@@ -1,6 +1,5 @@
-package com.mindamd.taskextractor.service;
+package com.mindamd.taskextractor.pipeline.spec;
 
-import com.mindamd.taskextractor.domain.Step;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -14,7 +13,7 @@ public class StepProxy {
 
     private static final Logger log = LoggerFactory.getLogger(StepProxy.class);
 
-    @Around("execution(* com.mindamd.taskextractor.domain.Step.execute(..))")
+    @Around("execution(* com.mindamd.taskextractor.pipeline.spec.Step.execute(..))")
     public Object intercept(ProceedingJoinPoint pjp) throws Throwable {
         Step step = (Step) pjp.getTarget();
         String pipelineId = (String) pjp.getArgs()[0];

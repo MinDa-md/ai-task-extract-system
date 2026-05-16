@@ -1,4 +1,4 @@
-package com.mindamd.taskextractor.domain.dto;
+package com.mindamd.taskextractor.step.filter.dto;
 
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.JsonGenerator;

@@ -1,4 +1,4 @@
-package com.mindamd.taskextractor.infrastructure.ai;
+package com.mindamd.taskextractor.step.ai;
 
 import org.springframework.stereotype.Component;
 

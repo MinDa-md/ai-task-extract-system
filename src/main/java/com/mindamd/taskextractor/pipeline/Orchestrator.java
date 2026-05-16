@@ -1,13 +1,13 @@
-package com.mindamd.taskextractor.service;
+package com.mindamd.taskextractor.pipeline;
 
-import com.mindamd.taskextractor.domain.Step;
-import com.mindamd.taskextractor.domain.StepData;
 import com.mindamd.taskextractor.domain.entity.Checkpoint;
 import com.mindamd.taskextractor.domain.entity.Pipeline;
 import com.mindamd.taskextractor.domain.repository.CheckpointRepository;
 import com.mindamd.taskextractor.domain.repository.PipelineRepository;
 import com.mindamd.taskextractor.global.exception.ConcurrentPipelineException;
 import com.mindamd.taskextractor.global.exception.NonRecoverableException;
+import com.mindamd.taskextractor.pipeline.spec.Step;
+import com.mindamd.taskextractor.pipeline.spec.StepData;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

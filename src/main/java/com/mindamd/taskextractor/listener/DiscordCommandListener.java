@@ -1,7 +1,7 @@
-package com.mindamd.taskextractor.presentation.discord;
+package com.mindamd.taskextractor.listener;
 
-import com.mindamd.taskextractor.domain.dto.SummaryResponseDto; // 이미지 구조에 맞춘 경로
-import com.mindamd.taskextractor.service.SummaryService;       // 이미지 구조에 맞춘 경로
+import com.mindamd.taskextractor.step.SummaryResponseDto;
+import com.mindamd.taskextractor.step.SummaryService;
 import lombok.RequiredArgsConstructor;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;

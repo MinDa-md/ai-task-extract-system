@@ -1,4 +1,4 @@
-package com.mindamd.taskextractor.global.security;
+package com.mindamd.taskextractor.step.filter;
 
 import org.springframework.stereotype.Service;
 import java.util.HashMap;

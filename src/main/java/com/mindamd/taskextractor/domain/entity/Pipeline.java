@@ -1,6 +1,5 @@
 package com.mindamd.taskextractor.domain.entity;
 
-import com.mindamd.taskextractor.domain.PipelineStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

@@ -1,4 +1,4 @@
-package com.mindamd.taskextractor.global.security;
+package com.mindamd.taskextractor.global.util;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;

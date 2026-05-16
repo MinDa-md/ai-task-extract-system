@@ -1,10 +1,9 @@
-package com.mindamd.taskextractor.service;
+package com.mindamd.taskextractor.step;
 
-import com.mindamd.taskextractor.domain.dto.SummaryResponseDto;
 import com.mindamd.taskextractor.domain.entity.Summary;
 import com.mindamd.taskextractor.domain.repository.SummaryRepository;
-import com.mindamd.taskextractor.global.security.PrivacyFilterService;
-import com.mindamd.taskextractor.infrastructure.ai.GeminiApiClient;
+import com.mindamd.taskextractor.step.ai.GeminiApiClient;
+import com.mindamd.taskextractor.step.filter.PrivacyFilterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.type.TypeReference;

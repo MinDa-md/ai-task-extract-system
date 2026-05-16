@@ -1,11 +1,12 @@
-package com.mindamd.taskextractor.service;
+package com.mindamd.taskextractor.pipeline;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import com.mindamd.taskextractor.domain.Step;
-import com.mindamd.taskextractor.domain.StepData;
+import com.mindamd.taskextractor.pipeline.spec.Step;
+import com.mindamd.taskextractor.pipeline.spec.StepData;
+import com.mindamd.taskextractor.pipeline.spec.StepProxy;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

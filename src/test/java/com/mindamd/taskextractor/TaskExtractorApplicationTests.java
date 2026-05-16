@@ -1,6 +1,6 @@
 package com.mindamd.taskextractor;
 
-import com.mindamd.taskextractor.domain.Step;
+import com.mindamd.taskextractor.pipeline.spec.Step;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;

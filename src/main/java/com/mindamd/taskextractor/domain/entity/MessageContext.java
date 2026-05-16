@@ -1,6 +1,6 @@
 package com.mindamd.taskextractor.domain.entity;
 
-import com.mindamd.taskextractor.global.converter.CryptoConverter;
+import com.mindamd.taskextractor.global.util.CryptoConverter;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

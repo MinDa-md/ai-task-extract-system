@@ -1,5 +1,7 @@
-package com.mindamd.taskextractor.domain.dto;
+package com.mindamd.taskextractor.step;
 
+import com.mindamd.taskextractor.step.filter.dto.MaskingType;
+import com.mindamd.taskextractor.step.filter.dto.PrivacyMasking;
 import lombok.Builder;
 import lombok.Getter;
 
