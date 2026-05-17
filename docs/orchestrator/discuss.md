@@ -1,15 +1,15 @@
 ## ADR-001: Step.execute() 시그니처
 
-**결정**: `StepData execute(String pipelineId, StepData input)`
+**결정**: `O execute(PipelineDto context, I input)`
 
 **이유**:
-- 선형 파이프라인에서 공유 객체(Context)는 불필요하다. 매개변수-반환값으로 데이터 흐름이 충분히 표현된다
+- 선형 파이프라인에서 공유 가변 객체(Context)는 불필요하다. 매개변수-반환값으로 데이터 흐름이 충분히 표현된다
 - 반환값이 있으면 각 Step의 입출력이 명시적으로 드러난다
 - Orchestrator는 StepData 내부를 모른 채 그대로 다음 Step에 전달하면 된다
-- Pipeline과 Step이 별도 엔티티로 분리되어 있어, Step 실행 시 어느 Pipeline에 속하는지 명시적으로 전달해야 한다
-- StepProxy(ADR-009)가 로깅 시 pipelineId를 컨텍스트로 사용한다
+- `PipelineDto(requestKey, channelId)`는 불변 식별자다. Step 실행 시 파이프라인 식별 정보를 명시적으로 전달하며, step data 클래스가 context 필드를 반복해서 들고 다니는 중복을 제거한다
+- StepProxy(ADR-009)가 로깅 시 `context.requestKey()`를 컨텍스트로 사용한다
 
-**기각된 대안 1**: `execute(StepData): void` + 공유 컨텍스트 객체
+**기각된 대안 1**: `execute(StepData): void` + 공유 가변 컨텍스트 객체
 - Step들이 공유 가변 객체에 데이터를 쓰는 방식은 암묵적 의존을 만든다
 - Orchestrator가 컨텍스트 생명주기를 관리해야 하는 책임이 추가된다
 
@@ -17,21 +17,27 @@
 - MDC는 스레드 로컬 기반으로 비동기 경계에서 전파가 보장되지 않는다
 - 로깅 인프라를 비즈니스 키 전달 경로로 사용하는 것은 안티패턴이다
 
+**기각된 대안 3**: `execute(String pipelineId, I input)`
+- pipelineId가 requestKey임이 코드에서 드러나지 않아 의미가 불분명하다
+- channelId를 필요로 하는 Step이 step data에서 꺼내야 하므로 context 필드가 step data 클래스마다 중복됐다
+
 ---
 
-## ADR-002: StepData는 마커 인터페이스다. 타입 안전성은 테스트로 보완한다
+## ADR-002: Step은 제네릭 인터페이스다. 인접 Step 간 계약은 테스트로 보완한다
 
-**결정**: `StepData`는 내용이 없는 마커 인터페이스다. 각 Step은 자신이 받을 타입으로 직접 캐스팅한다. 단계 간 계약의 정합성은 단위 테스트로 보장한다.
+**결정**: `Step<I extends StepData, O extends StepData>` 제네릭 인터페이스를 도입한다. 각 Step 구현체는 자신의 입출력 타입을 선언하며, `execute()` 내부에서 타입 캐스팅 없이 구체 타입을 사용한다. Orchestrator 루프에서는 `@SuppressWarnings("unchecked")` 캐스팅 1곳으로 격리된다. 인접 Step 간 계약의 정합성은 단위 테스트로 보장한다.
 
 **이유**:
-- 파이프라인 단계 간 연결의 타입 정합성은 Java 타입 시스템으로 완전히 보장할 수 없다
-- 제네릭을 써도 Orchestrator 루프에서 타입 소거로 동일한 런타임 문제가 발생한다. 복잡도 대비 실익이 없다
-- "계약은 테스트가 보장한다"는 접근이 소규모 프로젝트에서 실용적이다
+- 각 Step의 입출력 도메인 타입이 확정됐다. `Step<I, O>` 선언이 타입 계약을 코드 수준에서 표현한다
+- `execute()` 내부 런타임 캐스팅이 제거되어 Step 구현 시 `ClassCastException` 위험이 사라진다
+- 캐스팅 위험이 Orchestrator 루프 1곳으로 격리되어 문제 발생 시 추적이 쉽다
+- `serialize(O result)`, `O deserialize(String json)` 반환 타입이 구체 타입으로 선언되어 IDE 지원과 컴파일 타임 오류 검출이 향상된다
 
-**기각된 대안 1**: 제네릭 `Step<I extends StepData, O extends StepData>`
-- Step 내부는 안전해지지만 Orchestrator 루프(`List<Step<?,?>>`)에서 타입 소거로 동일한 런타임 캐스팅 필요
+**트레이드오프**:
+- Orchestrator 루프에서 `(Step<StepData, StepData>)` unchecked cast는 여전히 필요하다. 타입 소거로 인한 Java 타입 시스템의 한계다
+- 인접 Step 간 타입 계약(IngestStep의 O = FilterStep의 I)은 컴파일 타임에 강제되지 않는다. 단위 테스트로 보장한다
 
-**기각된 대안 2**: TypedKey 기반 저장소
+**기각된 대안**: TypedKey 기반 저장소
 - 소규모 프로젝트에서 과도한 복잡도
 
 ---
@@ -73,25 +79,29 @@
 
 ---
 
-## ADR-006: Step 인터페이스에 serialize()/deserialize()를 추가한다
+## ADR-006: 직렬화/역직렬화는 StepSerializer 컴포넌트가 담당한다. Step은 outputType()만 선언한다
 
-**결정**: `Step` 인터페이스에 두 메서드를 추가한다.
-- `String serialize(StepData result)` — 출력을 JSON String으로 직렬화
-- `StepData deserialize(String json)` — JSON String을 구체 타입으로 역직렬화
+**결정**: `Step` 인터페이스에서 `serialize()`/`deserialize()`를 제거한다. 대신 `Class<O> outputType()`만 선언한다. 직렬화/역직렬화 실행은 `StepSerializer` @Component가 중앙에서 담당한다.
 
-Orchestrator는 Step 성공 후 Checkpoint를 저장할 때 `step.serialize(result)`를 호출하고, 재시작 시 마지막 Checkpoint 복원에 `step.deserialize(json)`을 사용한다.
+- `StepSerializer.serialize(StepData)` — 출력을 JSON String으로 직렬화
+- `StepSerializer.deserialize(String, Class<T>)` — JSON String을 구체 타입으로 역직렬화
+- `Step.outputType()` — 역직렬화에 필요한 구체 타입을 Orchestrator에 제공
+
+Orchestrator는 Step 성공 후 `stepSerializer.serialize(current)`로 Checkpoint를 저장하고, 재시작 시 `stepSerializer.deserialize(json, step.outputType())`으로 복원한다.
 
 **이유**:
-- StepData는 마커 인터페이스(ADR-002)이므로 Orchestrator가 구체 타입을 알 수 없다. 역직렬화 시 타입 정보가 없으면 ObjectMapper가 타입을 추론할 수 없다
-- Step에 위임하면 관심사가 명확히 분리된다. 구체 타입 지식은 Step 안에 캡슐화된다
+- `serialize()`/`deserialize()`는 Orchestrator에서만 호출된다. Step 인터페이스에 두면 각 Step 구현체가 동일한 Jackson 보일러플레이트를 반복해야 한다
+- `StepSerializer`로 분리하면 ObjectMapper 설정과 예외 처리가 단일 위치에 집중된다
+- `outputType()`은 구체 타입 1개만 반환하면 되므로 각 Step의 부담이 최소화된다
 
-**기각된 대안 1**: Orchestrator에 ObjectMapper 주입
-- 역직렬화 시 구체 타입 정보 부재로 타입 파라미터를 외부에서 전달해야 한다
+**기각된 대안 1**: Step 인터페이스에 serialize()/deserialize() 유지 (초기 설계)
+- Orchestrator만 사용하는 메서드를 Step 인터페이스에 노출하여 인터페이스가 오염된다
+- 5개 Step 구현체마다 동일한 Jackson try-catch 블록이 반복된다
 
 **기각된 대안 2**: Step이 직접 DB를 조회해 복원
 - 모든 Step에 DB 의존성이 생기며, DB 읽기 책임이 Orchestrator와 Step에 분산된다
 
-**구현 제약**: `deserialize()` 구현 시 다음을 금지한다.
+**구현 제약**: `StepSerializer.deserialize()` 구현 시 다음을 금지한다.
 - `mapper.activateDefaultTyping(...)` — 폴리모픽 역직렬화로 DB 오염 시 RCE 가능
 - `mapper.enableDefaultTyping(...)` — 위의 deprecated 전신, 동일하게 위험
 - `mapper.readValue(json, Object.class)` — 타입 미지정으로 임의 클래스 인스턴스화 가능
@@ -120,6 +130,8 @@ AOP 기반 캐싱을 `@Aspect StepProxy`로 구현하는 방안. StepProxy가 Ch
 **이유**:
 - Checkpoint INSERT 시점(성공 후에만)과 조건을 Orchestrator가 제어해야 한다
 - StepProxy(AOP)에서 INSERT하면 성공 여부 판별과 저장 시점을 분리할 수 없다
+
+Step 성공 후 직렬화는 `stepSerializer.serialize(result)`를 사용한다 (ADR-006).
 
 **기각된 대안**: ADR-007처럼 StepProxy에서 INSERT 유지
 - Step 성공 후에만 INSERT하는 정책과 충돌한다
@@ -215,7 +227,6 @@ AOP 기반 캐싱을 `@Aspect StepProxy`로 구현하는 방안. StepProxy가 Ch
 
 **제약**:
 - IngestStep은 stepOrder=0, DeliveryStep은 stepOrder=99로 고정이며, 처리 Step의 stepOrder는 1~98 사이여야 한다
-- DeliveryStep의 `serialize()` / `deserialize()`는 호출되더라도 의미 있는 값을 반환할 필요가 없다
 
 ---
 

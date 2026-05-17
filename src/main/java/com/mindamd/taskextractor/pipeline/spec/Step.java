@@ -1,12 +1,12 @@
 package com.mindamd.taskextractor.pipeline.spec;
 
-public interface Step {
+import com.mindamd.taskextractor.domain.dto.PipelineDto;
+
+public interface Step<I extends StepData, O extends StepData> {
 
     Integer getStepOrder();
 
-    StepData execute(String pipelineId, StepData input);
+    O execute(PipelineDto context, I input);
 
-    String serialize(StepData result);
-
-    StepData deserialize(String json);
+    Class<O> outputType();
 }
