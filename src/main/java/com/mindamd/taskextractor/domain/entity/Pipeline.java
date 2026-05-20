@@ -19,6 +19,12 @@ public class Pipeline {
     @Id
     private String id;
 
+    @Column(nullable = false, updatable = false)
+    private String requestKey;
+
+    @Column(nullable = false, updatable = false)
+    private String channelId;
+
     @CreatedDate
     @Column(updatable = false, nullable = false)
     private LocalDateTime createdAt;
@@ -57,12 +63,12 @@ public class Pipeline {
         return runCount >= 3;
     }
 
-    private Pipeline(String id) {
-        this.id = id;
+    private Pipeline(String requestKey, String channelId) {
+        this.requestKey = requestKey;
+        this.channelId = channelId;
     }
 
-    public static Pipeline of(String id) {
-        return new Pipeline(id);
+    public static Pipeline of(String requestKey, String channelId) {
+        return new Pipeline(requestKey, channelId);
     }
-
 }

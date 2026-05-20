@@ -1,3 +1,10 @@
 package com.mindamd.taskextractor.domain.dto;
 
-public record SummaryDto(String meetingTime, String location, String participantsInfo) {}
+import com.mindamd.taskextractor.global.util.masking.MaskingType;
+import com.mindamd.taskextractor.global.util.masking.PrivacyMasking;
+
+public record SummaryDto(
+        String meetingTime,
+        @PrivacyMasking(type = MaskingType.LOCATION) String location,
+        @PrivacyMasking(type = MaskingType.PHONE) String participantsInfo
+) {}
