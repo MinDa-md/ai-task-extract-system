@@ -4,4 +4,4 @@ import com.mindamd.taskextractor.pipeline.spec.StepData;
 
 import java.util.Map;
 
-public record AnonymizedChatLog(String filteredText, Map<String, String> dictionary) implements StepData {}
+public record AnonymizationDictionary(Map<String, String> value) implements StepData {}
