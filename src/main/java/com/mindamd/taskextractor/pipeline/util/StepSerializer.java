@@ -1,6 +1,7 @@
-package com.mindamd.taskextractor.pipeline.spec;
+package com.mindamd.taskextractor.pipeline.util;
 
 import com.mindamd.taskextractor.global.exception.NonRecoverableException;
+import com.mindamd.taskextractor.pipeline.spec.StepData;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
@@ -26,4 +27,5 @@ public class StepSerializer {
             throw new NonRecoverableException("역직렬화 실패", e);
         }
     }
+
 }

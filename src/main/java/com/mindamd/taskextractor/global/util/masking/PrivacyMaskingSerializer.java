@@ -1,4 +1,4 @@
-package com.mindamd.taskextractor.step.filter.dto;
+package com.mindamd.taskextractor.global.util.masking;
 
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.JsonGenerator;

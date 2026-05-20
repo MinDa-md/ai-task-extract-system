@@ -1,4 +1,4 @@
-package com.mindamd.taskextractor.global.util;
+package com.mindamd.taskextractor.global.util.encrypt;
 
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;

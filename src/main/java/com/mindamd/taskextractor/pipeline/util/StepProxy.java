@@ -1,5 +1,7 @@
-package com.mindamd.taskextractor.pipeline.spec;
+package com.mindamd.taskextractor.pipeline.util;
 
+import com.mindamd.taskextractor.pipeline.spec.Step;
+import com.mindamd.taskextractor.pipeline.spec.StepData;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -15,20 +17,19 @@ public class StepProxy {
 
     @Around("execution(* com.mindamd.taskextractor.pipeline.spec.Step.execute(..))")
     public Object intercept(ProceedingJoinPoint pjp) throws Throwable {
-        Step step = (Step) pjp.getTarget();
-        String pipelineId = (String) pjp.getArgs()[0];
+        Step<StepData, StepData> step = (Step<StepData, StepData>) pjp.getTarget();
         Integer stepOrder = step.getStepOrder();
 
-        log.info("Step [{}] started. pipelineId={}", stepOrder, pipelineId);
+        log.info("Step [{}] started.", stepOrder);
         long start = System.currentTimeMillis();
         try {
             Object result = pjp.proceed();
             long elapsed = System.currentTimeMillis() - start;
-            log.info("Step [{}] completed. pipelineId={}, elapsed={}ms", stepOrder, pipelineId, elapsed);
+            log.info("Step [{}] completed. elapsed={}ms", stepOrder, elapsed);
             return result;
         } catch (Throwable t) {
             long elapsed = System.currentTimeMillis() - start;
-            log.error("Step [{}] failed. pipelineId={}, elapsed={}ms, error={}", stepOrder, pipelineId, elapsed, t.getClass().getSimpleName());
+            log.error("Step [{}] failed. elapsed={}ms, error={}", stepOrder, elapsed, t.getClass().getSimpleName());
             throw t;
         }
     }
